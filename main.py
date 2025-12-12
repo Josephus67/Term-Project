@@ -72,9 +72,38 @@ async def load_model():
     try:
         if not os.path.exists(MODEL_PATH):
             raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
-        # Load without compiling to avoid deserialization issues in different environments
-        model = tf.keras.models.load_model(MODEL_PATH, compile=False)
-        print(f"Model loaded successfully from {MODEL_PATH}")
+        
+        print(f"Loading model from {MODEL_PATH}...")
+        
+        # Reconstruct the model architecture manually to avoid deserialization issues
+        # This fixes the "Layer dense_5 expects 1 input, but received 2" error
+        try:
+            # 1. Define the base model (Xception)
+            base_model = tf.keras.applications.Xception(
+                include_top=False,
+                weights=None,  # We'll load weights from the file
+                input_shape=(224, 224, 3)
+            )
+            
+            # 2. Rebuild the top layers exactly as they were trained
+            x = base_model.output
+            x = tf.keras.layers.GlobalAveragePooling2D(name='global_average_pooling2d_5')(x)
+            x = tf.keras.layers.Dense(256, activation='relu', name='dense_5')(x)
+            x = tf.keras.layers.Dropout(0.5, name='dropout_5')(x)
+            outputs = tf.keras.layers.Dense(38, activation='softmax', name='dense_6')(x)
+            
+            # 3. Create the model
+            model = tf.keras.Model(inputs=base_model.input, outputs=outputs)
+            
+            # 4. Load weights
+            model.load_weights(MODEL_PATH)
+            print(f"Model weights loaded successfully from {MODEL_PATH}")
+            
+        except Exception as build_error:
+            print(f"Manual reconstruction failed: {build_error}")
+            print("Falling back to standard load_model...")
+            model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+            
     except Exception as e:
         print(f"Error loading model: {str(e)}")
         raise
