@@ -65,45 +65,75 @@ CLASS_NAMES = [
     'Tomato___healthy'
 ]
 
+class TFSavedModelWrapper:
+    def __init__(self, model_path):
+        self.model = tf.saved_model.load(model_path)
+        self.serve = self.model.serve
+    
+    def predict(self, input_data, verbose=0):
+        # input_data is numpy array, convert to tensor
+        input_tensor = tf.convert_to_tensor(input_data, dtype=tf.float32)
+        output = self.serve(input_tensor)
+        return output.numpy()
+
 @app.on_event("startup")
 async def load_model():
     """Load the model on startup"""
     global model
     try:
+        # 1. Try loading from 'model_deployment' directory (SavedModel format)
+        # This is the most robust method for deployment
+        if os.path.exists("model_deployment"):
+            print("Found 'model_deployment' directory. Loading SavedModel...")
+            try:
+                model = TFSavedModelWrapper("model_deployment")
+                print("Successfully loaded SavedModel from 'model_deployment'.")
+                return
+            except Exception as sm_error:
+                print(f"Failed to load SavedModel: {sm_error}")
+                print("Falling back to .keras file...")
+
+        # 2. Fallback to loading .keras file
         if not os.path.exists(MODEL_PATH):
             raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
         
         print(f"Loading model from {MODEL_PATH}...")
         
-        # Reconstruct the model architecture manually to avoid deserialization issues
-        # This fixes the "Layer dense_5 expects 1 input, but received 2" error
         try:
-            # 1. Define the base model (Xception)
-            base_model = tf.keras.applications.Xception(
-                include_top=False,
-                weights=None,  # We'll load weights from the file
-                input_shape=(224, 224, 3)
-            )
-            
-            # 2. Rebuild the top layers exactly as they were trained
-            x = base_model.output
-            x = tf.keras.layers.GlobalAveragePooling2D(name='global_average_pooling2d_5')(x)
-            x = tf.keras.layers.Dense(256, activation='relu', name='dense_5')(x)
-            x = tf.keras.layers.Dropout(0.5, name='dropout_5')(x)
-            outputs = tf.keras.layers.Dense(38, activation='softmax', name='dense_6')(x)
-            
-            # 3. Create the model
-            model = tf.keras.Model(inputs=base_model.input, outputs=outputs)
-            
-            # 4. Load weights
-            model.load_weights(MODEL_PATH)
-            print(f"Model weights loaded successfully from {MODEL_PATH}")
-            
-        except Exception as build_error:
-            print(f"Manual reconstruction failed: {build_error}")
-            print("Falling back to standard load_model...")
+            # Try standard load first
             model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+            print(f"Model loaded successfully using standard load_model.")
+        except Exception as load_error:
+            print(f"Standard load failed: {load_error}")
+            print("Attempting manual reconstruction as Sequential model...")
             
+            # Reconstruct as Sequential to match the saved model structure
+            # This fixes issues where Functional reconstruction mismatches Sequential weights
+            try:
+                base_model = tf.keras.applications.Xception(
+                    include_top=False,
+                    weights=None,
+                    input_shape=(224, 224, 3)
+                )
+                
+                model = tf.keras.Sequential([
+                    base_model,
+                    tf.keras.layers.GlobalAveragePooling2D(name='global_average_pooling2d_5'),
+                    tf.keras.layers.Dense(256, activation='relu', name='dense_5'),
+                    tf.keras.layers.Dropout(0.5, name='dropout_5'),
+                    tf.keras.layers.Dense(38, activation='softmax', name='dense_6')
+                ])
+                
+                # Build to initialize
+                model.build((None, 224, 224, 3))
+                
+                # Load weights
+                model.load_weights(MODEL_PATH)
+                print(f"Model weights loaded successfully from {MODEL_PATH} into reconstructed Sequential model")
+            except Exception as build_error:
+                print(f"Manual reconstruction failed: {build_error}")
+                raise load_error
+
     except Exception as e:
         print(f"Error loading model: {str(e)}")
         raise

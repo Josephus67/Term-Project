@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.log
+*.zip
+model_deployment/
+output.txt
+model_details.txt
+.DS_Store
