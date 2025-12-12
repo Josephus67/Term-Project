@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Disease Classifier</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌿 Plant Disease Classifier</h1>
+            <p class="subtitle">Upload a plant leaf image to identify diseases</p>
+        </header>
+
+        <div class="upload-section">
+            <div class="alert-box">
+                <strong>⚠️ Important:</strong> Please ensure you upload an image from the supported plant classes. Out-of-distribution images (unsupported plants or diseases) will yield incorrect predictions.
+            </div>
+            
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📷</div>
+                <p class="upload-text">Click to upload or drag and drop</p>
+                <p class="upload-hint">Supports: JPG, PNG, JPEG</p>
+                <input type="file" id="fileInput" accept="image/*" hidden>
+            </div>
+
+            <div class="preview-section" id="previewSection" style="display: none;">
+                <img id="previewImage" alt="Preview">
+                <button class="btn-secondary" id="clearBtn">Choose Another Image</button>
+            </div>
+
+            <button class="btn-primary" id="predictBtn" disabled>
+                <span id="btnText">Analyze Plant</span>
+                <span id="btnLoader" class="loader" style="display: none;"></span>
+            </button>
+        </div>
+
+        <div class="results-section" id="resultsSection" style="display: none;">
+            <h2>Analysis Results</h2>
+            
+            <div class="prediction-card main-prediction">
+                <div class="prediction-header">
+                    <span class="label">Diagnosis:</span>
+                    <span class="confidence-badge" id="mainConfidence">0%</span>
+                </div>
+                <h3 class="prediction-class" id="mainPrediction">-</h3>
+            </div>
+
+            <div class="top-predictions">
+                <h3>Top 5 Possible Conditions</h3>
+                <div id="topPredictions"></div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>About This Classifier</h3>
+            <p>This AI model can identify 38 different plant diseases and healthy conditions across various plant species including:</p>
+            <ul>
+                <li>🍎 Apple, 🍑 Peach, 🍒 Cherry</li>
+                <li>🍇 Grape, 🍊 Orange, 🍓 Strawberry</li>
+                <li>🌽 Corn, 🥔 Potato, 🍅 Tomato</li>
+                <li>🫑 Pepper, 🫐 Blueberry, and more</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer>
+        <p>Powered by Deep Learning (Xception Model) | PlantVillage Dataset</p>
+    </footer>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
