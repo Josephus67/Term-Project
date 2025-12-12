@@ -72,7 +72,8 @@ async def load_model():
     try:
         if not os.path.exists(MODEL_PATH):
             raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
-        model = tf.keras.models.load_model(MODEL_PATH)
+        # Load without compiling to avoid deserialization issues in different environments
+        model = tf.keras.models.load_model(MODEL_PATH, compile=False)
         print(f"Model loaded successfully from {MODEL_PATH}")
     except Exception as e:
         print(f"Error loading model: {str(e)}")
